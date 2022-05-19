@@ -35,7 +35,7 @@ category_index = label_map_util.create_category_index(categories)
 
 # Load a frozen inference graph into memory
 def load_inference_graph():
-    ASLmodel = keras.models.load_model("C:/Users/USER/OneDrive/Documents/GitHub/ASLrecognition.h5")
+    ASLmodel = keras.models.load_model("C:/Users/USER/OneDrive/Documents/GitHub/handtracking/ASLrecognition1.h5")
     # load frozen tensorflow model into memory
     print("> ====== loading HAND frozen graph into memory")
     detection_graph = tf.Graph()
