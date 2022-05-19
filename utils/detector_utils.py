@@ -9,6 +9,8 @@ from datetime import datetime
 import cv2
 from utils import label_map_util
 from collections import defaultdict
+import keras
+import matplotlib.pyplot as plt
 
 
 detection_graph = tf.Graph()
@@ -31,39 +33,69 @@ categories = label_map_util.convert_label_map_to_categories(
 category_index = label_map_util.create_category_index(categories)
 
 
-# Load a frozen infrerence graph into memory
+# Load a frozen inference graph into memory
 def load_inference_graph():
-
+    ASLmodel = keras.models.load_model("C:/Users/USER/OneDrive/Documents/GitHub/ASLrecognition.h5")
     # load frozen tensorflow model into memory
     print("> ====== loading HAND frozen graph into memory")
     detection_graph = tf.Graph()
     with detection_graph.as_default():
-        od_graph_def = tf.GraphDef()
-        with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
+        od_graph_def = tf.compat.v1.GraphDef()
+        with tf.io.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
             serialized_graph = fid.read()
             od_graph_def.ParseFromString(serialized_graph)
             tf.import_graph_def(od_graph_def, name='')
-        sess = tf.Session(graph=detection_graph)
+        sess = tf.compat.v1.Session(graph=detection_graph)
     print(">  ====== Hand Inference graph loaded.")
-    return detection_graph, sess
-
+    return detection_graph, sess, ASLmodel
+    
 
 # draw the detected bounding boxes on the images
 # You can modify this to also draw a label.
-def draw_box_on_image(num_hands_detect, score_thresh, scores, boxes, im_width, im_height, image_np):
+def draw_box_on_image(num_hands_detect, score_thresh, scores, boxes, im_width, im_height, image_np, ASLmodel):
     for i in range(num_hands_detect):
         if (scores[i] > score_thresh):
-            (left, right, top, bottom) = (boxes[i][1] * im_width, boxes[i][3] * im_width,
-                                          boxes[i][0] * im_height, boxes[i][2] * im_height)
+            (left, right, top, bottom) = (boxes[i][1] * im_width-30, boxes[i][3] * im_width+30,
+                                          boxes[i][0] * im_height-40, boxes[i][2] * im_height+20)
             p1 = (int(left), int(top))
             p2 = (int(right), int(bottom))
             cv2.rectangle(image_np, p1, p2, (77, 255, 9), 3, 1)
+            hand = image_np[int(top):int(bottom),int(left):int(right)]
+            sign_num = detect_sign(hand, ASLmodel)
+            sign_num = sign_num[0]
+            sign = sign_int2char(sign_num)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            topmiddle = (int((int(left)+int(right))/2), int(top)-10)
+            cv2.putText(image_np, sign, topmiddle, font, 1, (77, 255, 9), 2, cv2.LINE_4)
+            
+
+#Converts sign number to letter
+def sign_int2char(sign_num):
+    letters = ["a","b","c","d","e","f","g","h","i","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","error"]
+    sign = letters[sign_num]
+    return sign
 
 
 # Show fps value on image.
 def draw_fps_on_image(fps, image_np):
     cv2.putText(image_np, fps, (20, 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.75, (77, 255, 9), 2)
+
+
+# Detects sign from cropped rectangle
+def detect_sign(hand, ASLmodel):
+    try:
+        resized = cv2.resize(hand, (28,28), interpolation = cv2.INTER_CUBIC)
+        grey = (0.2989*resized[:,:,0]+0.5870*resized[:,:,1]+0.1140*resized[:,:,2])
+       # plt.imshow(resized, vmin=0, vmax=255)
+        plt.imshow(grey, cmap='gray', vmin=0, vmax=255)
+        grey = np.expand_dims(grey,axis=0)
+        grey = np.expand_dims(grey,axis=3)
+        sign = ASLmodel.predict_classes(grey)
+        return sign
+    except Exception as e:
+        print(str(e))
+        return [24]
 
 
 # Actual detection .. generate scores and bounding boxes given an image

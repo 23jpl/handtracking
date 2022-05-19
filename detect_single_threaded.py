@@ -4,7 +4,7 @@ import tensorflow as tf
 import datetime
 import argparse
 
-detection_graph, sess = detector_utils.load_inference_graph()
+detection_graph, sess, ASLmodel = detector_utils.load_inference_graph()
 
 if __name__ == '__main__':
 
@@ -34,14 +34,14 @@ if __name__ == '__main__':
         '--width',
         dest='width',
         type=int,
-        default=320,
+        default= 1024,
         help='Width of the frames in the video stream.')
     parser.add_argument(
         '-ht',
         '--height',
         dest='height',
         type=int,
-        default=180,
+        default= 736,
         help='Height of the frames in the video stream.')
     parser.add_argument(
         '-ds',
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         help='Size of the queue.')
     args = parser.parse_args()
 
-    cap = cv2.VideoCapture(args.video_source)
+    cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     num_frames = 0
     im_width, im_height = (cap.get(3), cap.get(4))
     # max number of hands we want to detect/track
-    num_hands_detect = 2
+    num_hands_detect = 1
 
     cv2.namedWindow('Single-Threaded Detection', cv2.WINDOW_NORMAL)
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         # draw bounding boxes on frame
         detector_utils.draw_box_on_image(num_hands_detect, args.score_thresh,
                                          scores, boxes, im_width, im_height,
-                                         image_np)
+                                         image_np, ASLmodel)
 
         # Calculate Frames per second (FPS)
         num_frames += 1
@@ -115,6 +115,7 @@ if __name__ == '__main__':
 
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 cv2.destroyAllWindows()
+                cap.release()
                 break
         else:
             print("frames processed: ", num_frames, "elapsed time: ",
