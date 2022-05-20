@@ -1,0 +1,79 @@
+import numpy as np
+import pandas as pd
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import keras
+from keras.models import Sequential
+from keras.layers import Dense, Conv2D , MaxPool2D , Flatten , Dropout , BatchNormalization
+from keras.preprocessing.image import ImageDataGenerator
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report,confusion_matrix
+from keras.callbacks import ReduceLROnPlateau
+
+train_df = pd.read_csv("C:/Users/23AlexD/Downloads/sign_mnist_train.csv")
+test_df = pd.read_csv("C:/Users/23AlexD/Downloads/sign_mnist_test.csv")
+
+test = pd.read_csv("C:/Users/23AlexD/Downloads/sign_mnist_test.csv")
+y = test['label']
+
+#y_train = labels (answers)
+y_train = train_df['label']
+y_test = test_df['label']
+
+#run these everytime u open this file to cut the text in the first row
+del train_df['label']
+del test_df['label']
+
+from sklearn.preprocessing import LabelBinarizer
+label_binarizer = LabelBinarizer()
+y_train = label_binarizer.fit_transform(y_train)
+y_test = label_binarizer.fit_transform(y_test)
+
+x_train = train_df.values
+x_test = test_df.values
+
+x_train = x_train / 255
+x_test = x_test / 255
+
+x_train = x_train.reshape(-1,28,28,1)
+x_test = x_test.reshape(-1,28,28,1)
+
+#Show first 10 images
+#f, ax = plt.subplots(2,5) 
+#f.set_size_inches(10, 10)
+#k = 0
+#for i in range(2):
+#    for j in range(5):
+#        ax[i,j].imshow(x_train[k].reshape(28, 28) , cmap = "gray")
+#        k += 1
+#    plt.tight_layout()  
+
+datagen = ImageDataGenerator(
+        featurewise_center=False,  # set input mean to 0 over the dataset
+        samplewise_center=False,  # set each sample mean to 0
+        featurewise_std_normalization=False,  # divide inputs by std of the dataset
+        samplewise_std_normalization=False,  # divide each input by its std
+        zca_whitening=False,  # apply ZCA whitening
+        rotation_range=10,  # randomly rotate images in the range (degrees, 0 to 180)
+        zoom_range = 0.1, # Randomly zoom image 
+        width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
+        height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
+        horizontal_flip=True,  # randomly flip images
+        vertical_flip=True)  # randomly flip images
+
+datagen.fit(x_train)
+
+
+learning_rate_reduction = ReduceLROnPlateau(monitor='val_accuracy', patience = 2, verbose=1,factor=0.5, min_lr=0.00001)
+
+from keras.models import load_model
+
+model = load_model('ASLrecognition3.h5')
+
+model.summary()
+
+history = model.fit(datagen.flow(x_train,y_train, batch_size = 128) ,epochs = 10 , validation_data = (x_test, y_test) , callbacks = [learning_rate_reduction])
+
+#copy into command window to export CNN
+#model.save('ASLrecognition3.h5')
